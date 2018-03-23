@@ -2,6 +2,8 @@ package archive
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/base64"
 	"io/ioutil"
 	"testing"
 )
@@ -16,6 +18,8 @@ func TestZipArchiver_Content(t *testing.T) {
 	ensureContents(t, zipfilepath, map[string][]byte{
 		"content.txt": []byte("This is some content"),
 	})
+
+	ensureChecksum(t, zipfilepath, "P7VckxoEiUO411WN3nwuS/yOBL4zsbVWkQU9E1I5H6c=")
 }
 
 func TestZipArchiver_File(t *testing.T) {
@@ -28,6 +32,8 @@ func TestZipArchiver_File(t *testing.T) {
 	ensureContents(t, zipfilepath, map[string][]byte{
 		"test-file.txt": []byte("This is test content"),
 	})
+
+	ensureChecksum(t, zipfilepath, "7Ozdhchkz12Ae7ZMtXQ4jqKlV5NWUjY2qgAxRflv0UA=")
 }
 
 func TestZipArchiver_Dir(t *testing.T) {
@@ -42,6 +48,8 @@ func TestZipArchiver_Dir(t *testing.T) {
 		"file2.txt": []byte("This is file 2"),
 		"file3.txt": []byte("This is file 3"),
 	})
+
+	ensureChecksum(t, zipfilepath, "9tByVm9Ik6q8Zodh5FoMssxapEdlWptHuxxcUMk+j4w=")
 }
 
 func TestZipArchiver_Multiple(t *testing.T) {
@@ -59,6 +67,7 @@ func TestZipArchiver_Multiple(t *testing.T) {
 
 	ensureContents(t, zipfilepath, content)
 
+	ensureChecksum(t, zipfilepath, "LrddibLkkT50VJied6+dNmh8hLzADtihWtxSNL/UdYY=")
 }
 
 func ensureContents(t *testing.T, zipfilepath string, wants map[string][]byte) {
@@ -97,5 +106,19 @@ func ensureContent(t *testing.T, wants map[string][]byte, got *zip.File) {
 	gotContent := string(gotContentBytes)
 	if gotContent != wantContent {
 		t.Errorf("mismatched content\ngot\n%s\nwant\n%s", gotContent, wantContent)
+	}
+}
+
+func ensureChecksum(t *testing.T, zipfilepath string, wantChecksum string) {
+	data, err := ioutil.ReadFile(zipfilepath)
+	if err != nil {
+		t.Errorf("could not compute file '%s' checksum: %s", zipfilepath, err)
+	}
+	h256 := sha256.New()
+	h256.Write([]byte(data))
+	shaSum := h256.Sum(nil)
+	gotChecksum := base64.StdEncoding.EncodeToString(shaSum[:])
+	if gotChecksum != wantChecksum {
+		t.Errorf("mismatched checksum\ngot\n%s\nwant\n%s", gotChecksum, wantChecksum)
 	}
 }
